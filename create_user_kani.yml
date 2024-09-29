@@ -1,0 +1,45 @@
+- name: Create kani user on the remote machine
+  hosts: remote_servers
+  vars_files:
+    - vars.yml
+    - vault.yml
+
+  tasks:
+    - name: "Create user kani"
+      user:
+        name: "{{ username }}"
+        password: "{{ password }}"
+        shell: /bin/bash
+        state: present
+        groups: "sudo"
+
+    - name: "Allow user 'kani' to have a passwordless sudo"
+      lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: "^{{ username }} "
+        line: "{{ username }} ALL=(ALL) NOPASSWD:ALL"
+        validate: 'visudo -cf %s'
+
+    - name: "Create .ssh directory for user 'kani'"
+      file:
+        path: "/home/{{ username }}/.ssh"
+        state: directory
+        owner: "{{ username }}"
+        group: "{{ username }}"
+        mode: '0700'
+
+    - name: "Copy SSH public key to authorized_keys"
+      copy:
+        src: "{{ ssh_public_key_path }}"
+        dest: "/home/{{ username }}/.ssh/authorized_keys"
+        owner: "{{ username }}"
+        group: "{{ username }}"
+        mode: '0600'
+
+    - name: Ensure correct permissions for .ssh directory
+      file:
+        path: "/home/{{ username }}/.ssh"
+        owner: "{{ username }}"
+        group: "{{ username }}"
+        mode: '0700'
